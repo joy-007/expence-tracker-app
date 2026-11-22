@@ -1,8 +1,17 @@
+import os
+import secrets
 import sqlite3
 
-from flask import Flask, redirect, render_template, request, url_for
+from flask import Flask, redirect, render_template, request, session, url_for
 
-from database.db import create_user, get_db, init_db, seed_db
+from database.db import (
+    create_user,
+    get_db,
+    get_user_by_id,
+    init_db,
+    seed_db,
+    verify_user,
+)
 
 NAME_MAX = 100
 EMAIL_MAX = 254
@@ -10,6 +19,7 @@ PASSWORD_MIN = 8
 PASSWORD_MAX = 128
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
 
 with app.app_context():
     init_db()
@@ -19,6 +29,17 @@ with app.app_context():
 # ------------------------------------------------------------------ #
 # Routes                                                              #
 # ------------------------------------------------------------------ #
+
+@app.context_processor
+def inject_current_user():
+    user_id = session.get("user_id")
+    if user_id is None:
+        return {"current_user": None}
+    user = get_user_by_id(user_id)
+    if user is None:
+        session.clear()
+    return {"current_user": user}
+
 
 @app.route("/")
 def landing():
@@ -53,6 +74,8 @@ def _validate_registration(name, email, password):
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
+    if session.get("user_id"):
+        return redirect(url_for("landing"))
     if request.method == "GET":
         return render_template("register.html")
 
@@ -81,9 +104,34 @@ def register():
     return redirect(url_for("login"))
 
 
-@app.route("/login")
+@app.route("/login", methods=["GET", "POST"])
 def login():
-    return render_template("login.html")
+    if session.get("user_id"):
+        return redirect(url_for("landing"))
+    if request.method == "GET":
+        return render_template("login.html")
+
+    raw_email = request.form.get("email", "")
+    password = request.form.get("password", "")
+    email = raw_email.strip().lower()
+
+    if not email or not password:
+        error = "Email and password are required."
+    else:
+        user = verify_user(email, password)
+        if user is not None:
+            session.clear()
+            session["user_id"] = user["id"]
+            return redirect(url_for("landing"))
+        error = "Invalid email or password."
+
+    return render_template("login.html", error=error, email=raw_email), 400
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("landing"))
 
 
 @app.route("/terms")
@@ -99,11 +147,6 @@ def privacy():
 # ------------------------------------------------------------------ #
 # Placeholder routes — students will implement these                  #
 # ------------------------------------------------------------------ #
-
-@app.route("/logout")
-def logout():
-    return "Logout — coming in Step 3"
-
 
 @app.route("/profile")
 def profile():
