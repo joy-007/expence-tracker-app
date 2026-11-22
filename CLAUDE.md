@@ -94,11 +94,11 @@ pytest -s
 | Route | Status |
 |---|---|
 | `GET /` | Implemented — renders `landing.html` |
-| `GET /register` | Implemented — renders `register.html` |
-| `GET /login` | Implemented — renders `login.html` |
+| `GET, POST /register` | Implemented — renders `register.html` |
+| `GET, POST /login` | Implemented — renders `login.html`, starts the session |
+| `GET /logout` | Implemented — clears the session, redirects to `/` |
 | `GET /terms` | Implemented — renders `terms.html` |
 | `GET /privacy` | Implemented — renders `privacy.html` |
-| `GET /logout` | Stub — Step 3 |
 | `GET /profile` | Stub — Step 4 |
 | `GET /expenses/add` | Stub — Step 7 |
 | `GET /expenses/<id>/edit` | Stub — Step 8 |
@@ -117,4 +117,5 @@ pytest -s
 - **Never use JS frameworks** — the frontend is intentionally vanilla
 - **`database/db.py` helpers exist** (Step 1): `get_db()`, `init_db()`, `seed_db()`, and the `CATEGORIES` tuple. The DB file is `expense_tracker.db` in the project root, created and seeded on app startup. Demo login: `demo@spendly.com` / `demo123`
 - **FK enforcement is manual** — SQLite foreign keys are off by default; `get_db()` must run `PRAGMA foreign_keys = ON` on every connection
+- **Sessions** (Step 3): only `user_id` is stored in the session. Set the `SECRET_KEY` env var for a stable key; otherwise a random one is generated per start and everyone is signed out on restart
 - The app runs on **port 5001**, not the Flask default 5000 — don't change this
